@@ -1,0 +1,100 @@
+// feedback-widget.component.ts
+import { Component } from '@angular/core';
+import { FeedbackService } from './feedback.service';
+
+@Component({
+  selector: 'app-feedback-widget',
+  templateUrl: './feedback-widget.component.html',
+  styleUrls: ['./feedback-widget.component.css']
+})
+export class FeedbackWidgetComponent {
+  feedback: string = '';
+  message: string = '';
+
+  constructor(private feedbackService: FeedbackService) {}
+
+  submitFeedback(): void {
+    if (this.feedback.trim()) {
+      this.feedbackService.sendFeedback(this.feedback).subscribe(
+        () => this.message = 'Feedback sent successfully!',
+        () => this.message = 'Failed to send feedback.'
+      );
+    } else {
+      this.message = 'Feedback cannot be empty.';
+    }
+  }
+}
+
+// feedback.service.ts
+import { Injectable } from '@angular/core';
+import { Observable, of } from 'rxjs';
+
+@Injectable({ providedIn: 'root' })
+export class FeedbackService {
+  sendFeedback(feedback: string): Observable<void> {
+    console.log('Sending feedback:', feedback);
+    return of(); // mock API call
+  }
+}
+
+// feedback-widget.component.html
+<div>
+  <textarea [(ngModel)]="feedback" placeholder="Enter feedback"></textarea>
+  <button (click)="submitFeedback()">Submit</button>
+  <p>{{ message }}</p>
+</div>
+
+// feedback-widget.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormsModule } from '@angular/forms';
+import { FeedbackWidgetComponent } from './feedback-widget.component';
+import { FeedbackService } from './feedback.service';
+import { of, throwError } from 'rxjs';
+
+describe('FeedbackWidgetComponent', () => {
+  let component: FeedbackWidgetComponent;
+  let fixture: ComponentFixture<FeedbackWidgetComponent>;
+  let feedbackService: jasmine.SpyObj<FeedbackService>;
+
+  beforeEach(async () => {
+    const spy = jasmine.createSpyObj('FeedbackService', ['sendFeedback']);
+
+    await TestBed.configureTestingModule({
+      declarations: [ FeedbackWidgetComponent ],
+      imports: [ FormsModule ],
+      providers: [{ provide: FeedbackService, useValue: spy }]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(FeedbackWidgetComponent);
+    component = fixture.componentInstance;
+    feedbackService = TestBed.inject(FeedbackService) as jasmine.SpyObj<FeedbackService>;
+    fixture.detectChanges();
+  });
+
+  it('should send feedback when input is valid', () => {
+    component.feedback = 'Great feature!';
+    feedbackService.sendFeedback.and.returnValue(of());
+
+    component.submitFeedback();
+
+    expect(feedbackService.sendFeedback).toHaveBeenCalledWith('Great feature!');
+    expect(component.message).toBe('Feedback sent successfully!');
+  });
+
+  it('should not send feedback if input is empty', () => {
+    component.feedback = '   ';
+    component.submitFeedback();
+
+    expect(feedbackService.sendFeedback).not.toHaveBeenCalled();
+    expect(component.message).toBe('Feedback cannot be empty.');
+  });
+
+  it('should handle failure from feedback service', () => {
+    component.feedback = 'Bug report';
+    feedbackService.sendFeedback.and.returnValue(throwError(() => new Error('Error')));
+
+    component.submitFeedback();
+
+    expect(component.message).toBe('Failed to send feedback.');
+  });
+});
