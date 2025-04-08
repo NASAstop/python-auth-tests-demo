@@ -1,0 +1,38 @@
+git checkout -b add-dummy-beam-job
+# jobs/sample_jobs/dummy_job.py
+
+from core.domain import beam_job_services
+import apache_beam as beam
+
+class DummyBeamJob(beam.PTransform):
+    def expand(self, pcoll):
+        return (
+            pcoll
+            | 'Create data' >> beam.Create([1, 2, 3])
+            | 'Multiply by 2' >> beam.Map(lambda x: x * 2)
+        )
+
+class DummyJobManager(beam_job_services.JobBaseManager):
+    @classmethod
+    def get_job_name(cls):
+        return 'dummy_job'
+
+    @staticmethod
+    def run(pipeline):
+        return pipeline | DummyBeamJob()
+from core.tests import test_utils
+from jobs.sample_jobs import dummy_job
+
+import apache_beam as beam
+
+class DummyBeamJobTests(test_utils.TestBase):
+
+    def test_dummy_job_output(self):
+        with self.pipeline as pipeline:
+            output = (
+                pipeline
+                | 'Input' >> beam.Create([1, 2])
+                | dummy_job.DummyBeamJob()
+            )
+            test_utils.assert_pcoll_equal(output, [2, 4])
+bazel test //jobs/sample_jobs:dummy_job_test
